@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建管理员</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #020817;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .auth-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 16px;
+            padding: 36px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            width: 100%;
+            padding: 10px 40px 10px 14px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #f8fafc;
+            outline: none;
+        }
+        .password-wrapper input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 18px;
+            color: #94a3b8;
+            background: none;
+            border: none;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        .toggle-password:hover {
+            color: #3b82f6;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            background: #3b82f6;
+            color: white;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #2563eb;
+        }
+        .error-msg {
+            background: rgba(239,68,68,0.1);
+            color: #ef4444;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .success-msg {
+            background: rgba(16,185,129,0.1);
+            color: #10b981;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1>创建管理员</h1>
+        <div class="subtitle">初始化系统，设置首个管理员账号</div>
+        <div id="errorMsg" class="error-msg"></div>
+        <div id="successMsg" class="success-msg"></div>
+        <div class="form-group">
+            <label>管理员用户名</label>
+            <input type="text" id="username" placeholder="请设置用户名">
+        </div>
+        <div class="form-group">
+            <label>密码</label>
+            <div class="password-wrapper">
+                <input type="password" id="password" placeholder="请设置密码（至少6位）">
+                <button type="button" class="toggle-password" id="togglePassword1">👁️</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>确认密码</label>
+            <div class="password-wrapper">
+                <input type="password" id="password2" placeholder="请再次输入密码">
+                <button type="button" class="toggle-password" id="togglePassword2">👁️</button>
+            </div>
+        </div>
+        <button class="btn" id="setupBtn">创建管理员账号</button>
+    </div>
+
+    <script>
+        function getAdmin() {
+            const adminStr = localStorage.getItem('snake_admin');
+            if (adminStr) {
+                try {
+                    return JSON.parse(adminStr);
+                } catch(e) {}
+            }
+            return null;
+        }
+
+        function setAdmin(username, password) {
+            localStorage.setItem('snake_admin', JSON.stringify({ username, password }));
+        }
+
+        document.getElementById('setupBtn').addEventListener('click', () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const password2 = document.getElementById('password2').value;
+            const errorDiv = document.getElementById('errorMsg');
+            const successDiv = document.getElementById('successMsg');
+
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            if (!username || !password) {
+                errorDiv.textContent = '请填写完整';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (password.length < 6) {
+                errorDiv.textContent = '密码至少6位';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (password !== password2) {
+                errorDiv.textContent = '两次密码不一致';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const existing = getAdmin();
+            if (existing) {
+                errorDiv.textContent = '管理员账号已存在，请直接登录';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            setAdmin(username, password);
+            successDiv.textContent = '✅ 管理员创建成功！即将跳转到登录页面';
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1500);
+        });
+
+        // ========== 密码显示/隐藏切换（两个密码框） ==========
+        function setupToggle(toggleBtn, inputField) {
+            toggleBtn.addEventListener('click', function() {
+                const type = inputField.getAttribute('type') === 'password' ? 'text' : 'password';
+                inputField.setAttribute('type', type);
+                this.textContent = type === 'password' ? '👁️' : '🙈';
+            });
+        }
+
+        const toggle1 = document.getElementById('togglePassword1');
+        const pass1 = document.getElementById('password');
+        const toggle2 = document.getElementById('togglePassword2');
+        const pass2 = document.getElementById('password2');
+
+        setupToggle(toggle1, pass1);
+        setupToggle(toggle2, pass2);
+    </script>
+</body>
+</html>

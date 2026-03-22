@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>图片管理 - 贪吃蛇</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body {
+            background: #020817;
+            color: #f8fafc;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+        /* 返回按钮 */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #9b59b6;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.25s ease;
+            z-index: 1000;
+        }
+        .back-btn:hover {
+            transform: scale(1.1);
+            background: #8e44ad;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        .back-btn:active {
+            transform: scale(0.95);
+        }
+        /* 右上角管理员信息 */
+        .admin-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px 6px 12px;
+            border-radius: 60px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s;
+        }
+        .admin-info:hover {
+            background: rgba(15, 23, 42, 0.9);
+            border-color: #9b59b6;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #9b59b6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .admin-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: #f8fafc;
+        }
+        /* 下拉菜单 */
+        .dropdown-menu {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 8px 0;
+            min-width: 160px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+        }
+        .dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .dropdown-item {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: center;
+        }
+        .dropdown-item:hover {
+            background: #1e293b;
+            color: #9b59b6;
+        }
+        .logout-item {
+            color: #9b59b6;
+            font-weight: 500;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 80px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .photo-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .photo-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .photo-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+            background: #1e293b;
+        }
+        .photo-info {
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .download-btn {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .download-btn:hover {
+            background: #2563eb;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #64748b;
+            font-size: 16px;
+        }
+        /* 模态框预览 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        .modal.show {
+            display: flex;
+        }
+
+        @media (max-width: 768px) {
+            .admin-name { display: none; }
+            .admin-info { padding: 6px 12px; }
+            .dropdown-menu { top: 70px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" id="backBtn">←</button>
+    <div class="admin-info" id="adminInfoBtn">
+        <div class="avatar" id="adminAvatar">管</div>
+        <span class="admin-name" id="adminName"></span>
+    </div>
+    <div class="dropdown-menu" id="dropdownMenu">
+        <div class="dropdown-item logout-item" id="logoutBtn">退出登录</div>
+    </div>
+    <div class="container">
+        <h1>📸 已保存的照片</h1>
+        <div id="photoGrid" class="photo-grid"></div>
+    </div>
+    <div id="previewModal" class="modal">
+        <img id="previewImg" src="" alt="预览">
+    </div>
+
+    <script>
+        // IndexedDB 读取所有图片
+        const DB_NAME = 'SnakePhotoDB';
+        const STORE_NAME = 'tupian';
+        let db = null;
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (db) return resolve(db);
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                request.onupgradeneeded = (event) => {
+                    const dbEvent = event.target.result;
+                    if (!dbEvent.objectStoreNames.contains(STORE_NAME)) {
+                        dbEvent.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        }
+
+        async function getAllPhotos() {
+            const database = await openDB();
+            const transaction = database.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            return new Promise((resolve) => {
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve([]);
+            });
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+        }
+
+        function downloadPhoto(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function renderPhotos() {
+            const photos = await getAllPhotos();
+            const grid = document.getElementById('photoGrid');
+            if (photos.length === 0) {
+                grid.innerHTML = '<div class="empty-state">📭 暂无照片，请返回游戏界面触发拍照</div>';
+                return;
+            }
+            // 按时间倒序
+            photos.sort((a,b) => b.timestamp - a.timestamp);
+            grid.innerHTML = '';
+            for (const photo of photos) {
+                const url = URL.createObjectURL(photo.data);
+                const card = document.createElement('div');
+                card.className = 'photo-card';
+                card.innerHTML = `
+                    <img src="${url}" data-id="${photo.id}" data-url="${url}">
+                    <div class="photo-info">
+                        <span>📅 ${formatDate(photo.timestamp)}</span>
+                        <button class="download-btn" data-id="${photo.id}" data-filename="${photo.filename}">⬇ 下载</button>
+                    </div>
+                `;
+                // 点击图片预览
+                const img = card.querySelector('img');
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const modal = document.getElementById('previewModal');
+                    const previewImg = document.getElementById('previewImg');
+                    previewImg.src = img.src;
+                    modal.classList.add('show');
+                });
+                // 下载按钮
+                const downloadBtn = card.querySelector('.download-btn');
+                downloadBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const database = await openDB();
+                    const transaction = database.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const getReq = store.get(photo.id);
+                    getReq.onsuccess = () => {
+                        const fullPhoto = getReq.result;
+                        downloadPhoto(fullPhoto.data, fullPhoto.filename);
+                    };
+                });
+                grid.appendChild(card);
+            }
+        }
+
+        // 返回按钮逻辑：从 URL 获取来源
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+        const fromPage = getUrlParam('from') || 'tancs.HTML';
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = fromPage;
+        });
+
+        // 预览模态框关闭
+        const modal = document.getElementById('previewModal');
+        modal.addEventListener('click', () => {
+            modal.classList.remove('show');
+            document.getElementById('previewImg').src = '';
+        });
+
+        // ========== 管理员头像和下拉菜单 ==========
+        function checkLogin() {
+            const logged = sessionStorage.getItem('snake_admin_logged');
+            if (logged !== 'true') {
+                // 未登录，跳转回登录页
+                const current = window.location.pathname.split('/').pop();
+                window.location.href = `login.html?redirect=${encodeURIComponent(current)}&from=${encodeURIComponent(fromPage)}`;
+                return false;
+            }
+            return true;
+        }
+
+        function loadAdminInfo() {
+            const username = sessionStorage.getItem('snake_admin_username');
+            if (username) {
+                document.getElementById('adminName').textContent = username;
+                const firstChar = username.charAt(0).toUpperCase();
+                document.getElementById('adminAvatar').textContent = firstChar;
+            } else {
+                document.getElementById('adminName').textContent = '管理员';
+                document.getElementById('adminAvatar').textContent = '管';
+            }
+        }
+
+        // 登录检查
+        if (!checkLogin()) {
+            // 如果未登录，checkLogin 已跳转，后面代码不再执行
+            throw new Error('未登录');
+        }
+        loadAdminInfo();
+
+        // 下拉菜单控制
+        const adminInfoBtn = document.getElementById('adminInfoBtn');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        let menuVisible = false;
+
+        function showMenu() {
+            dropdownMenu.classList.add('show');
+            menuVisible = true;
+        }
+
+        function hideMenu() {
+            dropdownMenu.classList.remove('show');
+            menuVisible = false;
+        }
+
+        function toggleMenu(e) {
+            e.stopPropagation();
+            if (menuVisible) {
+                hideMenu();
+            } else {
+                showMenu();
+            }
+        }
+
+        adminInfoBtn.addEventListener('click', toggleMenu);
+
+        // 点击页面其他地方关闭菜单
+        document.addEventListener('click', (e) => {
+            if (menuVisible && !adminInfoBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                hideMenu();
+            }
+        });
+
+        // 退出登录
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('snake_admin_logged');
+            sessionStorage.removeItem('snake_admin_username');
+            // 跳转到登录页，并携带原来源参数
+            window.location.href = `login.html?redirect=guanli.HTML&from=${encodeURIComponent(fromPage)}`;
+        });
+
+        // 渲染图片列表
+        renderPhotos();
+    </script>
+</body>
+</html>
