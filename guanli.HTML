@@ -14,7 +14,6 @@
             padding: 20px;
             position: relative;
         }
-        /* 返回按钮 */
         .back-btn {
             position: fixed;
             top: 20px;
@@ -42,7 +41,6 @@
         .back-btn:active {
             transform: scale(0.95);
         }
-        /* 右上角管理员信息 */
         .admin-info {
             position: fixed;
             top: 20px;
@@ -81,7 +79,6 @@
             font-weight: 500;
             color: #f8fafc;
         }
-        /* 下拉菜单 */
         .dropdown-menu {
             position: fixed;
             top: 80px;
@@ -126,8 +123,31 @@
         }
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             font-size: 28px;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 24px;
+            gap: 12px;
+        }
+        .upload-btn {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        .upload-btn:hover {
+            background: #2563eb;
         }
         .photo-grid {
             display: grid;
@@ -141,6 +161,7 @@
             overflow: hidden;
             transition: transform 0.2s;
             cursor: pointer;
+            position: relative;
         }
         .photo-card:hover {
             transform: translateY(-4px);
@@ -161,7 +182,11 @@
             font-size: 13px;
             color: #94a3b8;
         }
-        .download-btn {
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .download-btn, .delete-btn {
             background: #3b82f6;
             border: none;
             color: white;
@@ -170,6 +195,12 @@
             font-size: 12px;
             cursor: pointer;
             transition: background 0.2s;
+        }
+        .delete-btn {
+            background: #ef4444;
+        }
+        .delete-btn:hover {
+            background: #dc2626;
         }
         .download-btn:hover {
             background: #2563eb;
@@ -180,7 +211,6 @@
             color: #64748b;
             font-size: 16px;
         }
-        /* 模态框预览 */
         .modal {
             display: none;
             position: fixed;
@@ -202,7 +232,6 @@
         .modal.show {
             display: flex;
         }
-
         @media (max-width: 768px) {
             .admin-name { display: none; }
             .admin-info { padding: 6px 12px; }
@@ -221,6 +250,10 @@
     </div>
     <div class="container">
         <h1>📸 已保存的照片</h1>
+        <div class="toolbar">
+            <button class="upload-btn" id="uploadBtn">📤 上传图片</button>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
         <div id="photoGrid" class="photo-grid"></div>
     </div>
     <div id="previewModal" class="modal">
@@ -228,7 +261,6 @@
     </div>
 
     <script>
-        // IndexedDB 读取所有图片
         const DB_NAME = 'SnakePhotoDB';
         const STORE_NAME = 'tupian';
         let db = null;
@@ -262,6 +294,34 @@
             });
         }
 
+        async function deletePhoto(id) {
+            const database = await openDB();
+            const transaction = database.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            return new Promise((resolve, reject) => {
+                const request = store.delete(id);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function addPhoto(blob, filename) {
+            const database = await openDB();
+            const transaction = database.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const record = {
+                data: blob,
+                filename: filename,
+                timestamp: Date.now(),
+                mimeType: blob.type
+            };
+            return new Promise((resolve, reject) => {
+                const request = store.add(record);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
         function formatDate(timestamp) {
             const date = new Date(timestamp);
             return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
@@ -282,10 +342,9 @@
             const photos = await getAllPhotos();
             const grid = document.getElementById('photoGrid');
             if (photos.length === 0) {
-                grid.innerHTML = '<div class="empty-state">📭 暂无照片，请返回游戏界面触发拍照</div>';
+                grid.innerHTML = '<div class="empty-state">📭 暂无照片，请返回游戏界面触发拍照或点击上传按钮添加图片</div>';
                 return;
             }
-            // 按时间倒序
             photos.sort((a,b) => b.timestamp - a.timestamp);
             grid.innerHTML = '';
             for (const photo of photos) {
@@ -293,13 +352,15 @@
                 const card = document.createElement('div');
                 card.className = 'photo-card';
                 card.innerHTML = `
-                    <img src="${url}" data-id="${photo.id}" data-url="${url}">
+                    <img src="${url}" data-id="${photo.id}">
                     <div class="photo-info">
                         <span>📅 ${formatDate(photo.timestamp)}</span>
-                        <button class="download-btn" data-id="${photo.id}" data-filename="${photo.filename}">⬇ 下载</button>
+                        <div class="action-buttons">
+                            <button class="download-btn" data-id="${photo.id}" data-filename="${photo.filename}">⬇ 下载</button>
+                            <button class="delete-btn" data-id="${photo.id}">🗑 删除</button>
+                        </div>
                     </div>
                 `;
-                // 点击图片预览
                 const img = card.querySelector('img');
                 img.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -308,7 +369,6 @@
                     previewImg.src = img.src;
                     modal.classList.add('show');
                 });
-                // 下载按钮
                 const downloadBtn = card.querySelector('.download-btn');
                 downloadBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
@@ -317,15 +377,44 @@
                     const store = transaction.objectStore(STORE_NAME);
                     const getReq = store.get(photo.id);
                     getReq.onsuccess = () => {
-                        const fullPhoto = getReq.result;
-                        downloadPhoto(fullPhoto.data, fullPhoto.filename);
+                        downloadPhoto(getReq.result.data, getReq.result.filename);
                     };
+                });
+                const deleteBtn = card.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (confirm('确定要删除这张照片吗？')) {
+                        await deletePhoto(photo.id);
+                        URL.revokeObjectURL(url);
+                        await renderPhotos();
+                    }
                 });
                 grid.appendChild(card);
             }
         }
 
-        // 返回按钮逻辑：从 URL 获取来源
+        // 上传图片
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件');
+                return;
+            }
+            const blob = file.slice(0, file.size, file.type);
+            const filename = `upload_${Date.now()}_${file.name}`;
+            await addPhoto(blob, filename);
+            await renderPhotos();
+            fileInput.value = ''; // 清空，允许重复上传同一文件
+        });
+
+        // 返回按钮逻辑
         function getUrlParam(name) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(name);
@@ -342,11 +431,10 @@
             document.getElementById('previewImg').src = '';
         });
 
-        // ========== 管理员头像和下拉菜单 ==========
+        // 登录检查与管理员信息
         function checkLogin() {
             const logged = sessionStorage.getItem('snake_admin_logged');
             if (logged !== 'true') {
-                // 未登录，跳转回登录页
                 const current = window.location.pathname.split('/').pop();
                 window.location.href = `login.html?redirect=${encodeURIComponent(current)}&from=${encodeURIComponent(fromPage)}`;
                 return false;
@@ -366,56 +454,28 @@
             }
         }
 
-        // 登录检查
-        if (!checkLogin()) {
-            // 如果未登录，checkLogin 已跳转，后面代码不再执行
-            throw new Error('未登录');
-        }
+        if (!checkLogin()) throw new Error('未登录');
         loadAdminInfo();
 
-        // 下拉菜单控制
+        // 下拉菜单
         const adminInfoBtn = document.getElementById('adminInfoBtn');
         const dropdownMenu = document.getElementById('dropdownMenu');
         let menuVisible = false;
-
-        function showMenu() {
-            dropdownMenu.classList.add('show');
-            menuVisible = true;
-        }
-
-        function hideMenu() {
-            dropdownMenu.classList.remove('show');
-            menuVisible = false;
-        }
-
-        function toggleMenu(e) {
-            e.stopPropagation();
-            if (menuVisible) {
-                hideMenu();
-            } else {
-                showMenu();
-            }
-        }
-
+        function showMenu() { dropdownMenu.classList.add('show'); menuVisible = true; }
+        function hideMenu() { dropdownMenu.classList.remove('show'); menuVisible = false; }
+        function toggleMenu(e) { e.stopPropagation(); menuVisible ? hideMenu() : showMenu(); }
         adminInfoBtn.addEventListener('click', toggleMenu);
-
-        // 点击页面其他地方关闭菜单
         document.addEventListener('click', (e) => {
-            if (menuVisible && !adminInfoBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                hideMenu();
-            }
+            if (menuVisible && !adminInfoBtn.contains(e.target) && !dropdownMenu.contains(e.target)) hideMenu();
         });
 
         // 退出登录
-        const logoutBtn = document.getElementById('logoutBtn');
-        logoutBtn.addEventListener('click', () => {
+        document.getElementById('logoutBtn').addEventListener('click', () => {
             sessionStorage.removeItem('snake_admin_logged');
             sessionStorage.removeItem('snake_admin_username');
-            // 跳转到登录页，并携带原来源参数
             window.location.href = `login.html?redirect=guanli.HTML&from=${encodeURIComponent(fromPage)}`;
         });
 
-        // 渲染图片列表
         renderPhotos();
     </script>
 </body>
